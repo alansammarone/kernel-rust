@@ -1,5 +1,5 @@
 [package]
-name = "os"
+name = "kernel"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,3 +10,4 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
+bootloader = "0.9"
