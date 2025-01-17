@@ -28,7 +28,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    println!("Hello world{}", "!");
+    // serial_println!("Hello world! {}", "test");
+    println!("Hello world!");
+    print!("Hello world 2!");
+    // serial_println!("Hello world!");
 
     #[cfg(test)]
     test_main();

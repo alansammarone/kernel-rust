@@ -55,13 +55,23 @@ struct Buffer {
 }
 
 pub struct Writer {
+    initialized: bool,
     column_position: usize,
     color_code: ColorCode,
     buffer: &'static mut Buffer,
+    // TODO: for now, color_code is a writer (or screen)-level property, since it is specified here
+    // and passed unmodified to all write_byte calls. This implies different bytes
+    // can't have different `color_code`'s. For now, we just set _all_ bytes
+    // in the buffer to use this color code in the beginning.
 }
 
 impl Writer {
     pub fn write_byte(&mut self, byte: u8) {
+        if self.initialized == false {
+            self.fill_buffer();
+            self.initialized = true;
+        }
+
         match byte {
             b'\n' => self.new_line(),
             byte => {
@@ -93,9 +103,22 @@ impl Writer {
                 let character = self.buffer.chars[row][col].read();
                 self.buffer.chars[row - 1][col].write(character);
             }
-
-            // self.clear_row(BUFFER_HEIGHT - 1);
             self.column_position = 0;
+        }
+        self.clear_row(BUFFER_HEIGHT - 1);
+    }
+
+    pub fn fill_buffer(&mut self) {
+        // TODO: better name. buffer is an implementation detail
+        // TODO figure out why cursor is blinking when calling this method
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        for row in 0..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                self.buffer.chars[row][col].write(blank);
+            }
         }
     }
 
@@ -122,8 +145,10 @@ impl fmt::Write for Writer {
 // to use the std Mutex. We therefore use a spinlock for the time being.
 lazy_static! {
     pub static ref WRITER: SpinMutex<Writer> = SpinMutex::new(Writer {
+        initialized: false,
         column_position: 0,
         color_code: ColorCode::new(Color::Blue, Color::LightGray),
+        // color_code: ColorCode::new(Color::White, Color::Black),
         buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
     });
 }
@@ -143,6 +168,11 @@ macro_rules! println {
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
     WRITER.lock().write_fmt(args).unwrap();
+}
+
+#[test_case]
+fn test_println_clears_line() {
+    println!("Print some string");
 }
 
 #[test_case]
